@@ -46,7 +46,7 @@ class Dashactivity extends Module
     {
         $this->name = 'dashactivity';
         $this->tab = 'dashboard';
-        $this->version = '1.0.1';
+        $this->version = '1.1.0';
         $this->author = 'thirty bees';
         $this->push_filename = _PS_CACHE_DIR_.'push/activity';
         $this->allow_push = true;
@@ -300,54 +300,45 @@ class Dashactivity extends Module
         $gapi = Module::isInstalled('gapi') ? Module::getInstanceByName('gapi') : false;
         if (Validate::isLoadedObject($gapi) && $gapi->isConfigured()) {
             $visits = $uniqueVisitors = $onlineVisitors = 0;
-            if ($result = $gapi->requestReportData('', 'ga:visits,ga:visitors', Tools::substr($params['date_from'], 0, 10), Tools::substr($params['date_to'], 0, 10), null, null, 1, 1)) {
+            if ($result = $gapi->requestReportData('', 'ga:visits,ga:visitors', false, false, null, null, 1, 1)) {
                 $visits = $result[0]['metrics']['visits'];
-                $uniqueVisitors = $result[0]['metrics']['visitors'];
+                $onlineVisitors = $uniqueVisitors = $result[0]['metrics']['visitors'];
             }
         } else {
-            $row = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow(
-                (new DbQuery())
-                    ->select('COUNT(*)')
-                    ->from('connections')
-                    ->where('`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(false))
-            );
-            extract($row);
-        }
+            // Online visitors is only available with Analytics Real Time still in private beta at this time (October 18th, 2013).
+            // if ($result = $gapi->requestReportData('', 'ga:activeVisitors', null, null, null, null, 1, 1))
+            // $online_visitor = $result[0]['metrics']['activeVisitors'];
+            if ($maintenanceIps = Configuration::get('PS_MAINTENANCE_IP')) {
+                $maintenanceIps = implode(',', array_map('ip2long', array_map('trim', explode(',', $maintenanceIps))));
+            }
 
-        // Online visitors is only available with Analytics Real Time still in private beta at this time (October 18th, 2013).
-        // if ($result = $gapi->requestReportData('', 'ga:activeVisitors', null, null, null, null, 1, 1))
-        // $online_visitor = $result[0]['metrics']['activeVisitors'];
-        if ($maintenanceIps = Configuration::get('PS_MAINTENANCE_IP')) {
-            $maintenanceIps = implode(',', array_map('ip2long', array_map('trim', explode(',', $maintenanceIps))));
+            if (Configuration::get('PS_STATSDATA_CUSTOMER_PAGESVIEWS')) {
+                $sql = (new DbQuery())
+                    ->select('c.`id_guest`, c.`ip_address`, c.`date_add`, c.`http_referer`, pt.`name` AS `page`')
+                    ->from('connections', 'c')
+                    ->leftJoin('connections_page', 'cp', 'c.`id_connections` = cp.`id_connections`')
+                    ->leftJoin('page', 'p', 'p.`id_page` = cp.`id_page`')
+                    ->leftJoin('page_type', 'pt', 'p.`id_page_type` = pt.`id_page_type`')
+                    ->innerJoin('guest', 'g', 'c.`id_guest` = g.`id_guest`')
+                    ->where('g.`id_customer` IS NULL OR g.`id_customer` = 0 '.Shop::addSqlRestriction(false, 'c'))
+                    ->where('cp.`time_end` IS NULL')
+                    ->where('TIME_TO_SEC(TIMEDIFF(\''.pSQL(date('Y-m-d H:i:00', time())).'\', cp.`time_start`)) < 1800')
+                    ->where($maintenanceIps ? 'c.`ip_address` NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
+                    ->groupBy('c.`id_connections`')
+                    ->groupBy('c.`date_add` DESC');
+            } else {
+                $sql = (new DbQuery())
+                    ->select('c.`id_guest`, c.`ip_address`, c.`date_add`, c.`http_referer`, "-" AS `page`')
+                    ->from('connections', 'c')
+                    ->innerJoin('guest', 'g', 'c.`id_guest` = g.`id_guest`')
+                    ->where('g.`id_customer` IS NULL OR g.`id_customer` = 0 '.Shop::addSqlRestriction(false, 'c'))
+                    ->where('TIME_TO_SEC(TIMEDIFF(\''.pSQL(date('Y-m-d H:i:00', time())).'\', c.`date_add`)) < 1800')
+                    ->where($maintenanceIps ? 'AND c.ip_address NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
+                    ->orderBy('c.`date_add` DESC');
+            }
+            Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+            $onlineVisitors = Db::getInstance()->NumRows();
         }
-        if (Configuration::get('PS_STATSDATA_CUSTOMER_PAGESVIEWS')) {
-            $sql = (new DbQuery())
-                ->select('c.`id_guest`, c.`ip_address`, c.`date_add`, c.`http_referer`, pt.`name` AS `page`')
-                ->from('connections', 'c')
-                ->leftJoin('connections_page', 'cp', 'c.`id_connections` = cp.`id_connections`')
-                ->leftJoin('page', 'p', 'p.`id_page` = cp.`id_page`')
-                ->leftJoin('page_type', 'pt', 'p.`id_page_type` = pt.`id_page_type`')
-                ->innerJoin('guest', 'g', 'c.`id_guest` = g.`id_guest`')
-                ->where('g.`id_customer` IS NULL OR g.`id_customer` = 0 '.Shop::addSqlRestriction(false, 'c'))
-                ->where('cp.`time_end` IS NULL')
-                ->where('TIME_TO_SEC(TIMEDIFF(\''.pSQL(date('Y-m-d H:i:00', time())).'\', cp.`time_start`)) < 900')
-                ->where($maintenanceIps ? 'c.`ip_address` NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
-                ->groupBy('c.`id_connections`')
-                ->groupBy('c.`date_add` DESC')
-            ;
-        } else {
-            $sql = (new DbQuery())
-                ->select('c.`id_guest`, c.`ip_address`, c.`date_add`, c.`http_referer`, "-" AS `page`')
-                ->from('connections', 'c')
-                ->innerJoin('guest', 'g', 'c.`id_guest` = g.`id_guest`')
-                ->where('g.`id_customer` IS NULL OR g.`id_customer` = 0 '.Shop::addSqlRestriction(false, 'c'))
-                ->where('TIME_TO_SEC(TIMEDIFF(\''.pSQL(date('Y-m-d H:i:00', time())).'\', c.`date_add`)) < 900')
-                ->where($maintenanceIps ? 'AND c.ip_address NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
-                ->orderBy('c.`date_add` DESC')
-            ;
-        }
-        Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-        $onlineVisitors = Db::getInstance()->NumRows();
 
         $pendingOrders = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
             (new DbQuery())
