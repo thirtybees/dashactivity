@@ -287,7 +287,7 @@ class Dashactivity extends Module
                     'dash_trends_chart1' => [
                         'chart_type' => 'pie_chart_trends',
                         'data'       => [
-                            ['key' => 'prestashop.com', 'y' => round($visits / 2), 'color' => self::$colors[0]],
+                            ['key' => 'thirtybees.com', 'y' => round($visits / 2), 'color' => self::$colors[0]],
                             ['key' => 'google.com', 'y' => round($visits / 3), 'color' => self::$colors[1]],
                             ['key' => 'Direct Traffic', 'y' => round($visits / 4), 'color' => self::$colors[2]],
                         ],
