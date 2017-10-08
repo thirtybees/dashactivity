@@ -46,7 +46,7 @@ class Dashactivity extends Module
     {
         $this->name = 'dashactivity';
         $this->tab = 'dashboard';
-        $this->version = '1.1.1';
+        $this->version = '1.1.2';
         $this->author = 'thirty bees';
         $this->push_filename = _PS_CACHE_DIR_.'push/activity';
         $this->allow_push = true;
@@ -349,9 +349,9 @@ class Dashactivity extends Module
         $abandonedCarts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
             (new DbQuery())
                 ->select('COUNT(*)')
-                ->from('cart')
+                ->from('cart', 'c')
                 ->leftJoin('orders', 'o', 'o.`id_cart` = c.`id_cart` AND o.`id_order` IS NULL')
-                ->where('`date_upd` BETWEEN '.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MAX').' MIN'))).'" AND "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MIN').' MIN'))).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+                ->where('(o.`date_upd` BETWEEN "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MAX').' MIN'))).'" AND "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MIN').' MIN'))).'") '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
         );
 
         $returnExchanges = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
@@ -366,8 +366,9 @@ class Dashactivity extends Module
             (new DbQuery())
                 ->select('SUM(IF(IFNULL(stock.quantity, 0) > 0, 0, 1))')
                 ->from('product', 'p')
-                ->where('1 '.Shop::addSqlAssociation('product', 'p'))
+                ->join(Shop::addSqlAssociation('product', 'p'))
                 ->leftJoin('product_attribute', 'pa', 'p.`id_product` = pa.`id_product`')
+                ->join(Product::sqlStock('p', 'pa'))
                 ->where('p.`active` = 1')
         );
 
