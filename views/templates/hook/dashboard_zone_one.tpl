@@ -35,6 +35,7 @@
   </div>
   <section id="dashactivity_config" class="dash_config hide">
     <header><i class="icon-wrench"></i> {l s='Configuration' mod='dashactivity'}</header>
+    {* No escaping here *}
     {$dashactivity_config_form}
   </section>
   <section id="dash_live" class="loading">
@@ -144,7 +145,7 @@
       {if $gapi_mode}
         <li>
           <span class="data_label">
-            <img src="{$module_dir|escape:'htmlall':'UTF-8'}views/img/gapi-logo.gif" width="16" height="16" alt=""/> <a href="{$link->getAdminLink('AdminModules')|escape:'html':'UTF-8'}&amp;{$gapi_mode}=gapi">{l s='Link to your Google Analytics account' mod='dashactivity'}</a>
+            <img src="{$module_dir|escape:'htmlall':'UTF-8'}views/img/gapi-logo.gif" width="16" height="16" alt=""/> <a href="{$link->getAdminLink('AdminModules')|escape:'html':'UTF-8'}&amp;{$gapi_mode|escape:'html':'UTF-8'}=gapi">{l s='Link to your Google Analytics account' mod='dashactivity'}</a>
           </span>
         </li>
       {/if}
