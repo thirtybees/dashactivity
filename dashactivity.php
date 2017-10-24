@@ -333,100 +333,144 @@ class Dashactivity extends Module
                     ->where($maintenanceIps ? 'c.`ip_address` NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
                     ->orderBy('c.`date_add` DESC');
             }
-            Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
-            $onlineVisitors = Db::getInstance()->NumRows();
+            try {
+                Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+                $onlineVisitors = Db::getInstance()->NumRows();
+            } catch (PrestaShopDatabaseException $e) {
+                $onlineVisitors = 0;
+            }
         }
 
-        $pendingOrders = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from('orders', 'o')
-                ->leftJoin('order_state', 'os', 'o.`current_state` = os.`id_order_state`')
-                ->where('os.`paid` = 1')
-                ->where('os.`shipped` = 0 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-        );
+        try {
+            $pendingOrders = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from('orders', 'o')
+                    ->leftJoin('order_state', 'os', 'o.`current_state` = os.`id_order_state`')
+                    ->where('os.`paid` = 1')
+                    ->where('os.`shipped` = 0 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $pendingOrders = 0;
+        }
 
-        $abandonedCarts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from('cart', 'c')
-                ->leftJoin('orders', 'o', 'o.`id_cart` = c.`id_cart` AND o.`id_order` IS NULL')
-                ->where('(o.`date_upd` BETWEEN "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MAX').' MIN'))).'" AND "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MIN').' MIN'))).'") '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
-        );
+        try {
+            $abandonedCarts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from('cart', 'c')
+                    ->leftJoin('orders', 'o', 'o.`id_cart` = c.`id_cart` AND o.`id_order` IS NULL')
+                    ->where('(o.`date_upd` BETWEEN "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MAX').' MIN'))).'" AND "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MIN').' MIN'))).'") '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $abandonedCarts = 0;
+        }
 
-        $returnExchanges = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from('orders', 'o')
-                ->leftJoin('order_return', 'or2', 'o.`id_order` = or2.`id_order`')
-                ->where('or2.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
-        );
+        try {
+            $returnExchanges = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from('orders', 'o')
+                    ->leftJoin('order_return', 'or2', 'o.`id_order` = or2.`id_order`')
+                    ->where('or2.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $returnExchanges = 0;
+        }
 
-        $productsOutOfStock = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('SUM(IF(IFNULL(stock.quantity, 0) > 0, 0, 1))')
-                ->from('product', 'p')
-                ->join(Shop::addSqlAssociation('product', 'p'))
-                ->leftJoin('product_attribute', 'pa', 'p.`id_product` = pa.`id_product`')
-                ->join(Product::sqlStock('p', 'pa'))
-                ->where('p.`active` = 1')
-        );
+        try {
+            $productsOutOfStock = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('SUM(IF(IFNULL(stock.quantity, 0) > 0, 0, 1))')
+                    ->from('product', 'p')
+                    ->join(Shop::addSqlAssociation('product', 'p'))
+                    ->leftJoin('product_attribute', 'pa', 'p.`id_product` = pa.`id_product`')
+                    ->join(Product::sqlStock('p', 'pa'))
+                    ->where('p.`active` = 1')
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $productsOutOfStock = 0;
+        }
 
         $newMessages = AdminStatsController::getPendingMessages();
 
         $activeShoppingCarts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
             (new DbQuery())
                 ->select('COUNT(*)')
-                ->from('cart')
+                ->from(bqSQL(Cart::$definition['table']))
                 ->where('date_upd > "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ACTIVE').' MIN'))).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
         );
 
-        $newCustomers = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from('customer')
-                ->where('`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-        );
+        try {
+            $newCustomers = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from('customer')
+                    ->where('`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $newCustomers = 0;
+        }
 
-        $newRegistrations = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from('customer')
-                ->where('`newsletter_date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'"')
-                ->where('`newsletter` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-        );
-        $totalSubscribers = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from('customer')
-                ->where('`newsletter` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-        );
+        try {
+            $newRegistrations = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from(bqSQL(Customer::$definition['table']))
+                    ->where('`newsletter_date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'"')
+                    ->where('`newsletter` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $newRegistrations = 0;
+        }
+
+        try {
+            $totalSubscribers = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from(bqSQL(Customer::$definition['table']))
+                    ->where('`newsletter` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+            );
+        } catch (PrestaShopDatabaseException $e) {
+            $totalSubscribers = 0;
+        }
+
         if (Module::isInstalled('blocknewsletter')) {
-            $newRegistrations += Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                (new DbQuery())
-                    ->select('COUNT(*)')
-                    ->from('newsletter')
-                    ->where('`active` = 1')
-                    ->where('`newsletter_date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-            );
-            $totalSubscribers += Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                (new DbQuery())
-                    ->select('COUNT(*)')
-                    ->from('newsletter')
-                    ->where('`active` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-            );
+            try {
+                $newRegistrations += (int) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                    (new DbQuery())
+                        ->select('COUNT(*)')
+                        ->from('newsletter')
+                        ->where('`active` = 1')
+                        ->where('`newsletter_date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+                );
+            } catch (PrestaShopDatabaseException $e) {
+            }
+
+            try {
+                $totalSubscribers += (int) Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                    (new DbQuery())
+                        ->select('COUNT(*)')
+                        ->from('newsletter')
+                        ->where('`active` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+                );
+            } catch (PrestaShopDatabaseException $e) {
+            }
         }
 
         $productReviews = 0;
         if (Module::isInstalled('productcomments')) {
-            $productReviews += Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-                (new DbQuery())
-                    ->select('COUNT(*)')
-                    ->from('product_comments', 'pc')
-                    ->leftJoin('product', 'p', 'pc.`id_product` = p.`id_product` '.Shop::addSqlAssociation('product', 'p'))
-                    ->where('pc.`deleted` = 0')
-                    ->where('pc.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-            );
+            try {
+                $productReviews += Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                    (new DbQuery())
+                        ->select('COUNT(*)')
+                        ->from('product_comments', 'pc')
+                        ->leftJoin('product', 'p', 'pc.`id_product` = p.`id_product` '.Shop::addSqlAssociation('product', 'p'))
+                        ->where('pc.`deleted` = 0')
+                        ->where('pc.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+                );
+            } catch (PrestaShopDatabaseException $e) {
+            }
         }
 
         return [
