@@ -46,7 +46,7 @@ class Dashactivity extends Module
     {
         $this->name = 'dashactivity';
         $this->tab = 'dashboard';
-        $this->version = '1.1.3';
+        $this->version = '1.1.4';
         $this->author = 'thirty bees';
         $this->push_filename = _PS_CACHE_DIR_.'push/activity';
         $this->allow_push = true;
@@ -464,7 +464,7 @@ class Dashactivity extends Module
                 $productReviews += Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
                     (new DbQuery())
                         ->select('COUNT(*)')
-                        ->from('product_comments', 'pc')
+                        ->from('product_comment', 'pc')
                         ->leftJoin('product', 'p', 'pc.`id_product` = p.`id_product` '.Shop::addSqlAssociation('product', 'p'))
                         ->where('pc.`deleted` = 0')
                         ->where('pc.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
