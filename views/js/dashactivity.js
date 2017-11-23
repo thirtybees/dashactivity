@@ -23,15 +23,12 @@
  * International Registered Trademark & Property of PrestaShop SA
  */
 
-function pie_chart_trends(widget_name, chart_details) {
-  nv.addGraph(function () {
+function pie_chart_trends(widget_name, chart_details)
+{
+  nv.addGraph(function() {
     var chart = nv.models.pieChart()
-      .x(function (d) {
-        return d.key
-      })
-      .y(function (d) {
-        return d.y
-      })
+      .x(function(d) { return d.key })
+      .y(function(d) { return d.y })
       .color(d3.scale.category10().range())
       .donut(true)
       .showLabels(false)
@@ -48,15 +45,14 @@ function pie_chart_trends(widget_name, chart_details) {
   });
 }
 
-//TODO unify this with other function in calenda.js and replace date.js functions
-Date.parseDate = function (date, format) {
+Date.parseDate = function(date, format) {
   if (format === undefined)
     format = 'Y-m-d';
 
   var formatSeparator = format.match(/[.\/\-\s].*?/);
-  var formatParts = format.split(/\W+/);
-  var parts = date.split(formatSeparator);
-  var date = new Date();
+  var formatParts     = format.split(/\W+/);
+  var parts           = date.split(formatSeparator);
+  var date            = new Date();
 
   if (parts.length === formatParts.length) {
     date.setHours(0);
@@ -64,27 +60,27 @@ Date.parseDate = function (date, format) {
     date.setSeconds(0);
     date.setMilliseconds(0);
 
-    for (var i = 0; i <= formatParts.length; i++) {
-      switch (formatParts[i]) {
+    for (var i=0; i<=formatParts.length; i++) {
+      switch(formatParts[i]) {
         case 'dd':
         case 'd':
         case 'j':
-          date.setDate(parseInt(parts[i], 10) || 1);
+          date.setDate(parseInt(parts[i], 10)||1);
           break;
 
         case 'mm':
         case 'm':
-          date.setMonth((parseInt(parts[i], 10) || 1) - 1);
+          date.setMonth((parseInt(parts[i], 10)||1) - 1);
           break;
 
         case 'yy':
         case 'y':
-          date.setFullYear(2000 + (parseInt(parts[i], 10) || 1));
+          date.setFullYear(2000 + (parseInt(parts[i], 10)||1));
           break;
 
         case 'yyyy':
         case 'Y':
-          date.setFullYear(parseInt(parts[i], 10) || 1);
+          date.setFullYear(parseInt(parts[i], 10)||1);
           break;
       }
     }
@@ -93,23 +89,23 @@ Date.parseDate = function (date, format) {
   return date;
 };
 
-Date.prototype.format = function (format) {
+Date.prototype.format = function(format) {
   if (format === undefined)
     return this.toString();
 
   var formatSeparator = format.match(/[.\/\-\s].*?/);
-  var formatParts = format.split(/\W+/);
-  var result = '';
+  var formatParts     = format.split(/\W+/);
+  var result          = '';
 
-  for (var i = 0; i <= formatParts.length; i++) {
-    switch (formatParts[i]) {
+  for (var i=0; i<=formatParts.length; i++) {
+    switch(formatParts[i]) {
       case 'd':
       case 'j':
         result += this.getDate() + formatSeparator;
         break;
 
       case 'dd':
-        result += (this.getDate() < 10 ? '0' : '') + this.getDate() + formatSeparator;
+        result += (this.getDate() < 10 ? '0' : '')+this.getDate() + formatSeparator;
         break;
 
       case 'm':
@@ -117,7 +113,7 @@ Date.prototype.format = function (format) {
         break;
 
       case 'mm':
-        result += (this.getMonth() < 9 ? '0' : '') + (this.getMonth() + 1) + formatSeparator;
+        result += (this.getMonth() < 9 ? '0' : '')+(this.getMonth() + 1) + formatSeparator;
         break;
 
       case 'yy':
@@ -135,21 +131,21 @@ Date.prototype.format = function (format) {
   return result.slice(0, -1);
 }
 
-$(document).ready(function () {
-  if (typeof date_subtitle === 'undefined')
+$(document).ready(function() {
+  if (typeof date_subtitle === "undefined")
     var date_subtitle = '(from %s to %s)';
 
-  if (typeof date_format === 'undefined')
+  if (typeof date_format === "undefined")
     var date_format = 'Y-mm-dd';
 
-  $('#date-start').change(function () {
+  $('#date-start').change(function() {
     start = Date.parseDate($('#date-start').val(), 'Y-m-d');
     end = Date.parseDate($('#date-end').val(), 'Y-m-d');
     $('#customers-newsletters-subtitle').html(sprintf(date_subtitle, start.format(date_format), end.format(date_format)));
     $('#traffic-subtitle').html(sprintf(date_subtitle, start.format(date_format), end.format(date_format)));
   });
 
-  $('#date-end').change(function () {
+  $('#date-end').change(function() {
     start = Date.parseDate($('#date-start').val(), 'Y-m-d');
     end = Date.parseDate($('#date-end').val(), 'Y-m-d');
 
