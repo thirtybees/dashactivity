@@ -46,7 +46,7 @@ class Dashactivity extends Module
     {
         $this->name = 'dashactivity';
         $this->tab = 'dashboard';
-        $this->version = '1.1.4';
+        $this->version = '1.2.0';
         $this->author = 'thirty bees';
         $this->push_filename = _PS_CACHE_DIR_.'push/activity';
         $this->allow_push = true;
@@ -69,16 +69,28 @@ class Dashactivity extends Module
         Configuration::updateValue('DASHACTIVITY_CART_ABANDONED_MAX', 48);
         Configuration::updateValue('DASHACTIVITY_VISITOR_ONLINE', 30);
 
-        return (parent::install()
-            && $this->registerHook('dashboardZoneOne')
-            && $this->registerHook('dashboardData')
-            && $this->registerHook('actionObjectOrderAddAfter')
-            && $this->registerHook('actionObjectCustomerAddAfter')
-            && $this->registerHook('actionObjectCustomerMessageAddAfter')
-            && $this->registerHook('actionObjectCustomerThreadAddAfter')
-            && $this->registerHook('actionObjectOrderReturnAddAfter')
-            && $this->registerHook('actionAdminControllerSetMedia')
-        );
+        if (!parent::install()) {
+            return false;
+        }
+
+        foreach ([
+            'dashboardZoneOne',
+            'dashboardData',
+            'actionObjectOrderAddAfter',
+            'actionObjectCustomerAddAfter',
+            'actionObjectCustomerMessageAddAfter',
+            'actionObjectCustomerThreadAddAfter',
+            'actionObjectOrderReturnAddAfter',
+            'actionAdminControllerSetMedia',
+        ] as $hook) {
+            try {
+                $this->registerHook($hook);
+            } catch (PrestaShopException $e) {
+                $this->context->controller->errors[] = sprintf($this->l('Dashboard activity module: Unable to register hook `%s`'), $hook);
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -308,35 +320,17 @@ class Dashactivity extends Module
             if ($maintenanceIps = Configuration::get('PS_MAINTENANCE_IP')) {
                 $maintenanceIps = implode(',', array_map('ip2long', array_map('trim', explode(',', $maintenanceIps))));
             }
-
-            if (Configuration::get('PS_STATSDATA_CUSTOMER_PAGESVIEWS')) {
-                $sql = (new DbQuery())
-                    ->select('c.`id_guest`, c.`ip_address`, c.`date_add`, c.`http_referer`, pt.`name` AS `page`')
-                    ->from('connections', 'c')
-                    ->leftJoin('connections_page', 'cp', 'c.`id_connections` = cp.`id_connections`')
-                    ->leftJoin('page', 'p', 'p.`id_page` = cp.`id_page`')
-                    ->leftJoin('page_type', 'pt', 'p.`id_page_type` = pt.`id_page_type`')
-                    ->innerJoin('guest', 'g', 'c.`id_guest` = g.`id_guest`')
-                    ->where('g.`id_customer` IS NULL OR g.`id_customer` = 0 '.Shop::addSqlRestriction(false, 'c'))
-                    ->where('cp.`time_end` IS NULL')
-                    ->where('TIME_TO_SEC(TIMEDIFF(\''.pSQL(date('Y-m-d H:i:00', time())).'\', cp.`time_start`)) < 1800')
-                    ->where($maintenanceIps ? 'c.`ip_address` NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
-                    ->groupBy('c.`id_connections`')
-                    ->groupBy('c.`date_add` DESC');
-            } else {
-                $sql = (new DbQuery())
+            try {
+                Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS((new DbQuery())
                     ->select('c.`id_guest`, c.`ip_address`, c.`date_add`, c.`http_referer`, "-" AS `page`')
                     ->from('connections', 'c')
                     ->innerJoin('guest', 'g', 'c.`id_guest` = g.`id_guest`')
                     ->where('g.`id_customer` IS NULL OR g.`id_customer` = 0 '.Shop::addSqlRestriction(false, 'c'))
                     ->where('TIME_TO_SEC(TIMEDIFF(\''.pSQL(date('Y-m-d H:i:00', time())).'\', c.`date_add`)) < 1800')
                     ->where($maintenanceIps ? 'c.`ip_address` NOT IN ('.preg_replace('/[^,0-9]/', '', $maintenanceIps).')' : '')
-                    ->orderBy('c.`date_add` DESC');
-            }
-            try {
-                Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+                    ->orderBy('c.`date_add` DESC'));
                 $onlineVisitors = Db::getInstance()->NumRows();
-            } catch (PrestaShopDatabaseException $e) {
+            } catch (PrestaShopException $e) {
                 $onlineVisitors = 0;
             }
         }
@@ -350,7 +344,7 @@ class Dashactivity extends Module
                     ->where('os.`paid` = 1')
                     ->where('os.`shipped` = 0 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $pendingOrders = 0;
         }
 
@@ -362,7 +356,7 @@ class Dashactivity extends Module
                     ->leftJoin('orders', 'o', 'o.`id_cart` = c.`id_cart` AND o.`id_order` IS NULL')
                     ->where('(o.`date_upd` BETWEEN "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MAX').' MIN'))).'" AND "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ABANDONED_MIN').' MIN'))).'") '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $abandonedCarts = 0;
         }
 
@@ -374,7 +368,7 @@ class Dashactivity extends Module
                     ->leftJoin('order_return', 'or2', 'o.`id_order` = or2.`id_order`')
                     ->where('or2.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER, 'o'))
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $returnExchanges = 0;
         }
 
@@ -388,18 +382,22 @@ class Dashactivity extends Module
                     ->join(Product::sqlStock('p', 'pa'))
                     ->where('p.`active` = 1')
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $productsOutOfStock = 0;
         }
 
         $newMessages = AdminStatsController::getPendingMessages();
 
-        $activeShoppingCarts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
-            (new DbQuery())
-                ->select('COUNT(*)')
-                ->from(bqSQL(Cart::$definition['table']))
-                ->where('date_upd > "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ACTIVE').' MIN'))).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
-        );
+        try {
+            $activeShoppingCarts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
+                (new DbQuery())
+                    ->select('COUNT(*)')
+                    ->from(bqSQL(Cart::$definition['table']))
+                    ->where('date_upd > "'.pSQL(date('Y-m-d H:i:s', strtotime('-'.(int) Configuration::get('DASHACTIVITY_CART_ACTIVE').' MIN'))).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
+            );
+        } catch (PrestaShopException $e) {
+            $activeShoppingCarts = 0;
+        }
 
         try {
             $newCustomers = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue(
@@ -408,7 +406,7 @@ class Dashactivity extends Module
                     ->from('customer')
                     ->where('`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $newCustomers = 0;
         }
 
@@ -420,7 +418,7 @@ class Dashactivity extends Module
                     ->where('`newsletter_date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'"')
                     ->where('`newsletter` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $newRegistrations = 0;
         }
 
@@ -431,7 +429,7 @@ class Dashactivity extends Module
                     ->from(bqSQL(Customer::$definition['table']))
                     ->where('`newsletter` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
             );
-        } catch (PrestaShopDatabaseException $e) {
+        } catch (PrestaShopException $e) {
             $totalSubscribers = 0;
         }
 
@@ -444,7 +442,7 @@ class Dashactivity extends Module
                         ->where('`active` = 1')
                         ->where('`newsletter_date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
                 );
-            } catch (PrestaShopDatabaseException $e) {
+            } catch (PrestaShopException $e) {
             }
 
             try {
@@ -454,7 +452,7 @@ class Dashactivity extends Module
                         ->from('newsletter')
                         ->where('`active` = 1 '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
                 );
-            } catch (PrestaShopDatabaseException $e) {
+            } catch (PrestaShopException $e) {
             }
         }
 
@@ -469,7 +467,7 @@ class Dashactivity extends Module
                         ->where('pc.`deleted` = 0')
                         ->where('pc.`date_add` BETWEEN "'.pSQL($params['date_from']).'" AND "'.pSQL($params['date_to']).'" '.Shop::addSqlRestriction(Shop::SHARE_ORDER))
                 );
-            } catch (PrestaShopDatabaseException $e) {
+            } catch (PrestaShopException $e) {
             }
         }
 
@@ -546,13 +544,17 @@ class Dashactivity extends Module
             $directLink = $this->l('Direct link');
             $websites = [$directLink => 0];
 
-            $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
-                (new DbQuery())
-                    ->select('`http_referer`')
-                    ->from('connections')
-                    ->where('`date_add` BETWEEN "'.pSQL($dateFrom).'" AND "'.pSQL($dateTo).'" '.Shop::addSqlRestriction())
-                    ->limit((int) $limit)
-            );
+            try {
+                $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
+                    (new DbQuery())
+                        ->select('`http_referer`')
+                        ->from('connections')
+                        ->where('`date_add` BETWEEN "'.pSQL($dateFrom).'" AND "'.pSQL($dateTo).'" '.Shop::addSqlRestriction())
+                        ->limit((int) $limit)
+                );
+            } catch (PrestaShopException $e) {
+                $result = [];
+            }
             foreach ($result as $row) {
                 if (!isset($row['http_referer']) || empty($row['http_referer'])) {
                     ++$websites[$directLink];
