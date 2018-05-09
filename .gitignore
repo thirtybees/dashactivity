@@ -1,1 +1,7 @@
-*dashactivity*.zip
+
+/translations/*
+!/translations/index.php
+
+/config*.xml
+
+dashactivity-*.zip
