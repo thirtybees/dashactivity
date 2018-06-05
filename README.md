@@ -1,6 +1,6 @@
 # Dashboard Activity
 
-The dash activity module allows you to
+Show recent users and other statistics.
 
 ## Description
 

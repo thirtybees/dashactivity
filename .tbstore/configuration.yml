@@ -7,8 +7,15 @@ tags:
   - shop activity
   - stats
   - statistics
-description_short: The dash activity module allows you to
+description_short: Show recent users and other statistics.
 description: description.md
 images:
   - image-1.png
+gdpr_compliant: false
 license: AFL
+php_version:
+  - 5.5
+  - 5.6
+  - 7.0
+  - 7.1
+  - 7.2
