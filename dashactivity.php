@@ -48,13 +48,15 @@ class Dashactivity extends Module
         $this->tab = 'dashboard';
         $this->version = '1.2.0';
         $this->author = 'thirty bees';
+        $this->need_instance = 0;
         $this->push_filename = _PS_CACHE_DIR_.'push/activity';
         $this->allow_push = true;
         $this->push_time_limit = 180;
 
         parent::__construct();
         $this->displayName = $this->l('Dashboard Activity');
-        $this->description = '';
+        $this->description = 'Show recent users and other statistics.';
+        $this->tb_versions_compliancy = '> 1.0.0';
     }
 
     /**
