@@ -57,6 +57,7 @@ class Dashactivity extends Module
         $this->displayName = $this->l('Dashboard Activity');
         $this->description = 'Show recent users and other statistics.';
         $this->tb_versions_compliancy = '> 1.0.0';
+        $this->tb_min_version = '1.0.0';
     }
 
     /**
