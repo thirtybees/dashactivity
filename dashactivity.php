@@ -41,6 +41,7 @@ class Dashactivity extends Module
 
     /**
      * Dashactivity constructor.
+     * @throws PrestaShopException
      */
     public function __construct()
     {
@@ -64,6 +65,9 @@ class Dashactivity extends Module
      * Install this module
      *
      * @return bool
+     * @throws HTMLPurifier_Exception
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function install()
     {
@@ -120,6 +124,10 @@ class Dashactivity extends Module
      * Hook to dashboard zone one
      *
      * @return string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
+     * @throws PrestaShopException
      */
     public function hookDashboardZoneOne()
     {
@@ -147,6 +155,8 @@ class Dashactivity extends Module
 
     /**
      * @return array
+     * @throws PrestaShopException
+     * @throws PrestaShopException
      */
     public function getConfigFieldsValues()
     {
@@ -162,6 +172,11 @@ class Dashactivity extends Module
      * Render the configuration form
      *
      * @return string
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
+     * @throws SmartyException
+     * @throws PrestaShopException
+     * @throws PrestaShopException
      */
     public function renderConfigForm()
     {
@@ -256,6 +271,8 @@ class Dashactivity extends Module
      * @param array $params
      *
      * @return array
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     public function hookDashboardData($params)
     {
@@ -509,6 +526,8 @@ class Dashactivity extends Module
      * @param string $dateTo
      *
      * @return array
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function getTrafficSources($dateFrom, $dateTo)
     {
@@ -522,6 +541,10 @@ class Dashactivity extends Module
         return $trafficSources;
     }
 
+    /**
+     * @throws PrestaShopException
+     * @throws PrestaShopDatabaseException
+     */
     protected function getReferer($dateFrom, $dateTo, $limit = 3)
     {
         /** @var Gapi $gapi */
@@ -583,6 +606,8 @@ class Dashactivity extends Module
      * @param string $dateTo
      *
      * @return array
+     * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
     protected function getChartTrafficSource($dateFrom, $dateTo)
     {
