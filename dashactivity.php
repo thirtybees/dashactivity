@@ -252,7 +252,6 @@ class Dashactivity extends Module
         $lang = new Language((int) Configuration::get('PS_LANG_DEFAULT'));
         $helper->default_form_language = $lang->id;
         $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') ? Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG') : 0;
-        $this->fields_form = [];
         $helper->id = (int) Tools::getValue('id_carrier');
         $helper->identifier = $this->identifier;
         $helper->submit_action = 'submitDashConfig';
@@ -276,10 +275,10 @@ class Dashactivity extends Module
      */
     public function hookDashboardData($params)
     {
-        if (Tools::strlen($params['date_from']) == 10) {
+        if (strlen($params['date_from']) == 10) {
             $params['date_from'] .= ' 00:00:00';
         }
-        if (Tools::strlen($params['date_to']) == 10) {
+        if (strlen($params['date_to']) == 10) {
             $params['date_to'] .= ' 23:59:59';
         }
 
@@ -531,7 +530,7 @@ class Dashactivity extends Module
      */
     protected function getTrafficSources($dateFrom, $dateTo)
     {
-        $referrers = $this->getReferer($dateFrom, $dateTo, 3);
+        $referrers = $this->getReferer($dateFrom, $dateTo);
         $trafficSources = [];
         $i = 0;
         foreach ($referrers as $referrerName => $n) {
@@ -554,8 +553,8 @@ class Dashactivity extends Module
             if ($result = $gapi->requestReportData(
                 'ga:source',
                 'ga:visitors',
-                Tools::substr($dateFrom, 0, 10),
-                Tools::substr($dateTo, 0, 10),
+                substr($dateFrom, 0, 10),
+                substr($dateTo, 0, 10),
                 '-ga:visitors',
                 null,
                 1,
@@ -582,7 +581,7 @@ class Dashactivity extends Module
                 $result = [];
             }
             foreach ($result as $row) {
-                if (!isset($row['http_referer']) || empty($row['http_referer'])) {
+                if (empty($row['http_referer'])) {
                     ++$websites[$directLink];
                 } else {
                     $website = preg_replace('/^www./', '', parse_url($row['http_referer'], PHP_URL_HOST));
