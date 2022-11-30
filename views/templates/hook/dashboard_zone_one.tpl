@@ -22,7 +22,7 @@
  * PrestaShop is an internationally registered trademark of PrestaShop SA.
  *}
 
-<section id="dashactivity" class="panel widget{if $allow_push} allow_push{/if}">
+<section id="dashactivity" class="panel widget">
   <div class="panel-heading">
     <i class="icon-time"></i> {l s='Activity overview' mod='dashactivity'}
     <span class="panel-heading-action">

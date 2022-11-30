@@ -32,12 +32,8 @@ if (!defined('_TB_VERSION_')) {
  */
 class Dashactivity extends Module
 {
-    // @codingStandardsIgnoreStart
     /** @var string[] $colors */
     protected static $colors = ['#1F77B4', '#FF7F0E', '#2CA02C'];
-    /** @var string $push_filename */
-    public $push_filename = '';
-    // @codingStandardsIgnoreEnd
 
     /**
      * Dashactivity constructor.
@@ -47,12 +43,9 @@ class Dashactivity extends Module
     {
         $this->name = 'dashactivity';
         $this->tab = 'dashboard';
-        $this->version = '1.2.3';
+        $this->version = '1.3.0';
         $this->author = 'thirty bees';
         $this->need_instance = 0;
-        $this->push_filename = _PS_CACHE_DIR_.'push/activity';
-        $this->allow_push = true;
-        $this->push_time_limit = 180;
 
         parent::__construct();
         $this->displayName = $this->l('Dashboard Activity');
@@ -83,11 +76,6 @@ class Dashactivity extends Module
         foreach ([
             'dashboardZoneOne',
             'dashboardData',
-            'actionObjectOrderAddAfter',
-            'actionObjectCustomerAddAfter',
-            'actionObjectCustomerMessageAddAfter',
-            'actionObjectCustomerThreadAddAfter',
-            'actionObjectOrderReturnAddAfter',
             'actionAdminControllerSetMedia',
         ] as $hook) {
             try {
@@ -618,45 +606,5 @@ class Dashactivity extends Module
         }
 
         return $return;
-    }
-
-    /**
-     * Hook after adding a customer message
-     */
-    public function hookActionObjectCustomerMessageAddAfter()
-    {
-        $this->hookActionObjectOrderAddAfter();
-    }
-
-    /**
-     * Hook after adding an Order object
-     */
-    public function hookActionObjectOrderAddAfter()
-    {
-        Tools::changeFileMTime($this->push_filename);
-    }
-
-    /**
-     * Hook after adding a CustomerThread object
-     */
-    public function hookActionObjectCustomerThreadAddAfter()
-    {
-        $this->hookActionObjectOrderAddAfter();
-    }
-
-    /**
-     * Hook after adding a Customer object
-     */
-    public function hookActionObjectCustomerAddAfter()
-    {
-        $this->hookActionObjectOrderAddAfter();
-    }
-
-    /**
-     * Hook after adding an OrderReturn object
-     */
-    public function hookActionObjectOrderReturnAddAfter()
-    {
-        $this->hookActionObjectOrderAddAfter();
     }
 }
