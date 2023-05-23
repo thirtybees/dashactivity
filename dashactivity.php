@@ -43,7 +43,7 @@ class Dashactivity extends Module
     {
         $this->name = 'dashactivity';
         $this->tab = 'dashboard';
-        $this->version = '1.3.0';
+        $this->version = '1.4.0';
         $this->author = 'thirty bees';
         $this->need_instance = 0;
 
