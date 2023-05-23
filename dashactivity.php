@@ -58,7 +58,7 @@ class Dashactivity extends Module
      * Install this module
      *
      * @return bool
-     * @throws HTMLPurifier_Exception
+     *
      * @throws PrestaShopDatabaseException
      * @throws PrestaShopException
      */
@@ -234,6 +234,8 @@ class Dashactivity extends Module
             'suffix' => $this->l('hrs'),
         ];
 
+        /** @var AdminController $controller */
+        $controller = $this->context->controller;
         $helper = new HelperForm();
         $helper->show_toolbar = false;
         $helper->table = $this->table;
@@ -245,7 +247,7 @@ class Dashactivity extends Module
         $helper->submit_action = 'submitDashConfig';
         $helper->tpl_vars = [
             'fields_value' => $this->getConfigFieldsValues(),
-            'languages'    => $this->context->controller->getLanguages(),
+            'languages'    => $controller->getLanguages(),
             'id_language'  => $this->context->language->id,
         ];
 

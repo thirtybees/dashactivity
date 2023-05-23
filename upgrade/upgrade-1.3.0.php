@@ -19,7 +19,10 @@
 
 /**
  * @param Dashactivity $module
+ *
  * @return bool
+ * @throws PrestaShopDatabaseException
+ * @throws PrestaShopException
  */
 function upgrade_module_1_3_0($module)
 {
