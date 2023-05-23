@@ -609,4 +609,18 @@ class Dashactivity extends Module
 
         return $return;
     }
+
+    /**
+     * Save widged configuration
+     *
+     * @param array $params
+     * @throws PrestaShopException
+     */
+    public function saveDashConfig($params)
+    {
+        Configuration::updateValue('DASHACTIVITY_CART_ACTIVE', (int)$params['DASHACTIVITY_CART_ACTIVE']);
+        Configuration::updateValue('DASHACTIVITY_CART_ABANDONED_MIN', (int)$params['DASHACTIVITY_CART_ABANDONED_MIN']);
+        Configuration::updateValue('DASHACTIVITY_CART_ABANDONED_MAX', (int)$params['DASHACTIVITY_CART_ABANDONED_MAX']);
+        Configuration::updateValue('DASHACTIVITY_VISITOR_ONLINE', (int)$params['DASHACTIVITY_VISITOR_ONLINE']);
+    }
 }
