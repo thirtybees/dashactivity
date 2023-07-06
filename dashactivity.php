@@ -32,8 +32,7 @@ if (!defined('_TB_VERSION_')) {
  */
 class Dashactivity extends Module
 {
-    /** @var string[] $colors */
-    protected static $colors = ['#1F77B4', '#FF7F0E', '#2CA02C'];
+    const COLORS = ['#1F77B4', '#FF7F0E', '#2CA02C', "#BD7EBE", "#E60049"];
 
     /**
      * Dashactivity constructor.
@@ -299,18 +298,18 @@ class Dashactivity extends Module
                 ],
                 'data_list_small' => [
                     'dash_traffic_source' => [
-                        '<i class="icon-circle" style="color:'.self::$colors[0].'"></i> thirtybees.com' => round($visits / 2),
-                        '<i class="icon-circle" style="color:'.self::$colors[1].'"></i> google.com'     => round($visits / 3),
-                        '<i class="icon-circle" style="color:'.self::$colors[2].'"></i> Direct Traffic' => round($visits / 4),
+                        '<i class="icon-circle" style="color:'.$this->getColor(0).'"></i> thirtybees.com' => round($visits / 2),
+                        '<i class="icon-circle" style="color:'.$this->getColor(1).'"></i> google.com'     => round($visits / 3),
+                        '<i class="icon-circle" style="color:'.$this->getColor(2).'"></i> Direct Traffic' => round($visits / 4),
                     ],
                 ],
                 'data_chart'      => [
                     'dash_trends_chart1' => [
                         'chart_type' => 'pie_chart_trends',
                         'data'       => [
-                            ['key' => 'thirtybees.com', 'y' => round($visits / 2), 'color' => self::$colors[0]],
-                            ['key' => 'google.com', 'y' => round($visits / 3), 'color' => self::$colors[1]],
-                            ['key' => 'Direct Traffic', 'y' => round($visits / 4), 'color' => self::$colors[2]],
+                            ['key' => 'thirtybees.com', 'y' => round($visits / 2), 'color' => $this->getColor(0)],
+                            ['key' => 'google.com', 'y' => round($visits / 3), 'color' => $this->getColor(1)],
+                            ['key' => 'Direct Traffic', 'y' => round($visits / 4), 'color' => $this->getColor(2)],
                         ],
                     ],
                 ],
@@ -480,6 +479,8 @@ class Dashactivity extends Module
             }
         }
 
+        $referers = $this->getReferer($params['date_from'], $params['date_to'], count(static::COLORS));
+
         return [
             'data_value'      => [
                 'pending_orders'        => (int) $pendingOrders,
@@ -500,10 +501,10 @@ class Dashactivity extends Module
                 'orders_trends' => ['way' => 'down', 'value' => 0.42],
             ],
             'data_list_small' => [
-                'dash_traffic_source' => $this->getTrafficSources($params['date_from'], $params['date_to']),
+                'dash_traffic_source' => $this->getTrafficSources($referers),
             ],
             'data_chart'      => [
-                'dash_trends_chart1' => $this->getChartTrafficSource($params['date_from'], $params['date_to']),
+                'dash_trends_chart1' => $this->getChartTrafficSource($referers),
             ],
         ];
     }
@@ -511,30 +512,32 @@ class Dashactivity extends Module
     /**
      * Get traffic sources
      *
-     * @param string $dateFrom
-     * @param string $dateTo
+     * @param array $referrers
      *
      * @return array
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
      */
-    protected function getTrafficSources($dateFrom, $dateTo)
+    protected function getTrafficSources($referrers)
     {
-        $referrers = $this->getReferer($dateFrom, $dateTo);
         $trafficSources = [];
-        $i = 0;
+        $colorIndex = 0;
         foreach ($referrers as $referrerName => $n) {
-            $trafficSources['<i class="icon-circle" style="color:'.self::$colors[$i++].'"></i> '.$referrerName] = $n;
+            $color = $this->getColor($colorIndex++);
+            $trafficSources['<i class="icon-circle" style="color:'.$color.'"></i> '.$referrerName] = $n;
         }
 
         return $trafficSources;
     }
 
     /**
-     * @throws PrestaShopException
+     * @param string $dateFrom
+     * @param string $dateTo
+     * @param int $limit
+     *
+     * @return array
      * @throws PrestaShopDatabaseException
+     * @throws PrestaShopException
      */
-    protected function getReferer($dateFrom, $dateTo, $limit = 3)
+    protected function getReferer($dateFrom, $dateTo, $limit)
     {
         /** @var Gapi $gapi */
         $gapi = Module::isInstalled('gapi') ? Module::getInstanceByName('gapi') : false;
@@ -562,27 +565,31 @@ class Dashactivity extends Module
             try {
                 $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS(
                     (new DbQuery())
-                        ->select('`http_referer`')
-                        ->from('connections')
-                        ->where('`date_add` BETWEEN "'.pSQL($dateFrom).'" AND "'.pSQL($dateTo).'" '.Shop::addSqlRestriction())
-                        ->limit((int) $limit)
+                        ->select('c.http_referer')
+                        ->select('count(1) as cnt')
+                        ->from('connections', 'c')
+                        ->where('c.`date_add` BETWEEN "'.pSQL($dateFrom).'" AND "'.pSQL($dateTo).'" '.Shop::addSqlRestriction())
+                        ->groupBy('c.http_referer')
                 );
             } catch (PrestaShopException $e) {
                 $result = [];
             }
             foreach ($result as $row) {
-                if (empty($row['http_referer'])) {
-                    ++$websites[$directLink];
+                $referer = $row['http_referer'];
+                $count = (int)$row['cnt'];
+                if (empty($referer)) {
+                    $websites[$directLink] += $count;
                 } else {
-                    $website = preg_replace('/^www./', '', parse_url($row['http_referer'], PHP_URL_HOST));
+                    $website = preg_replace('/^www./', '', parse_url($referer, PHP_URL_HOST));
                     if (!isset($websites[$website])) {
-                        $websites[$website] = 1;
+                        $websites[$website] = $count;
                     } else {
-                        ++$websites[$website];
+                        $websites[$website]+= $count;
                     }
                 }
             }
             arsort($websites);
+            $websites = array_slice($websites, 0, $limit);
         }
 
         return $websites;
@@ -591,20 +598,21 @@ class Dashactivity extends Module
     /**
      * Get traffic sources for the chart
      *
-     * @param string $dateFrom
-     * @param string $dateTo
+     * @param array $referers
      *
      * @return array
-     * @throws PrestaShopDatabaseException
-     * @throws PrestaShopException
      */
-    protected function getChartTrafficSource($dateFrom, $dateTo)
+    protected function getChartTrafficSource($referers)
     {
-        $referers = $this->getReferer($dateFrom, $dateTo);
         $return = ['chart_type' => 'pie_chart_trends', 'data' => []];
-        $i = 0;
+        $colorIndex = 0;
         foreach ($referers as $refererName => $n) {
-            $return['data'][] = ['key' => $refererName, 'y' => $n, 'color' => self::$colors[$i++]];
+            $color = $this->getColor($colorIndex++);
+            $return['data'][] = [
+                'key' => $refererName,
+                'y' => $n,
+                'color' => $color
+            ];
         }
 
         return $return;
@@ -622,5 +630,16 @@ class Dashactivity extends Module
         Configuration::updateValue('DASHACTIVITY_CART_ABANDONED_MIN', (int)$params['DASHACTIVITY_CART_ABANDONED_MIN']);
         Configuration::updateValue('DASHACTIVITY_CART_ABANDONED_MAX', (int)$params['DASHACTIVITY_CART_ABANDONED_MAX']);
         Configuration::updateValue('DASHACTIVITY_VISITOR_ONLINE', (int)$params['DASHACTIVITY_VISITOR_ONLINE']);
+    }
+
+    /**
+     * @param int $colorIndex
+     *
+     * @return string
+     */
+    protected function getColor($colorIndex)
+    {
+        $colorIndex = $colorIndex % count(static::COLORS);
+        return static::COLORS[$colorIndex];
     }
 }
